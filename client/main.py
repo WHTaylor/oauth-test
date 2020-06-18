@@ -6,6 +6,7 @@ import requests
 import jwt
 
 AUTH_ROOT = "http://localhost:5000"
+RS_ROOT = "http://localhost:3000"
 id_param = "client_id=test"
 session_cookie = "client_session_id"
 
@@ -24,10 +25,15 @@ def index():
         body = f'<a href="{AUTH_ROOT}/oauth/authorization?{id_param}&response_type=code">Login</a>'
     else:
         token = sessions[session_id]
-        resp = requests.get(f"{AUTH_ROOT}/public-key").json()
-        decoded = jwt.decode(token, resp["key"], algorithms=[resp["alg"]])
-        body = f"<p>Logged in. Client can use token '{token}' to act on your behalf, but you don't know that. The decoded token is: {decoded}</p>"\
-        "<a href='/logout'>Logout</a>"
+        logout_url = flask.url_for("logout")
+        body = f'<a href="{logout_url}">Logout</a>'
+        res = requests.get(
+            f"{RS_ROOT}/protected-things",
+            headers={"Authorization": f"Bearer {token}"})
+        if res.ok:
+            body += "<br>" + str(res.json())
+        else:
+            body += "<br>" + res.text + "<br>" + str(res.headers)
     resp = flask.make_response(body)
     if delete_cookie:
         resp.set_cookie(session_cookie, '', expires=0)
@@ -53,7 +59,3 @@ def logout():
     if session_id and session_id in sessions:
         del sessions[session_id]
     return flask.redirect(flask.url_for("index"))
-
-
-if __name__ == '__main__':
-    app.run("localhost", port=4000)

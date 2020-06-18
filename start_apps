@@ -1,7 +1,0 @@
-#!/bin/bash
-
-. ~/projects/op-test/venv/Scripts/activate
-export FLASK_ENV=development
-FLASK_APP=auth/main.py flask run &> auth_out &
-FLASK_APP=client/main.py flask run --port 4000 &> client_out &
-echo "started auth server and client"

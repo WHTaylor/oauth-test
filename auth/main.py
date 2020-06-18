@@ -91,7 +91,9 @@ def no_caching(resp):
     return resp
 
 def generate_token():
-        return jwt.encode(
-                {"some": "claims"},
-                data.private_key(),
-                algorithm="RS256").decode()   # jwt is encoding to bytes, which can't be JSON serialized
+    return jwt.encode({
+            "some": "claims",
+            "exp": int(time.time()) + 30,
+        },
+        data.private_key(),
+        algorithm="RS256").decode()   # jwt is encoding to bytes, which can't be JSON serialized
