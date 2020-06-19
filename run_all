@@ -1,0 +1,19 @@
+#!/bin/bash
+
+function killthekids {
+    for child in $(jobs -p); do
+        kill -s SIGINT $child
+    done
+}
+
+ROOT=~/projects/op-test
+. $ROOT/venv/Scripts/activate
+
+export FLASK_ENV=development
+
+FLASK_APP=$ROOT/auth/main.py flask run &> $ROOT/outs/auth &
+FLASK_APP=$ROOT/client/main.py flask run --port 4000 &> $ROOT/outs/client &
+FLASK_APP=$ROOT/resource_server/main.py flask run --port 3000 &> $ROOT/outs/rs &
+
+trap killthekids SIGINT
+wait $(jobs -p)

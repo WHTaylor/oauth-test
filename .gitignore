@@ -2,3 +2,4 @@ venv/
 __pycache__/
 **/keys/private
 decode_test.py
+outs/
