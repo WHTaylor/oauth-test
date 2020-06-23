@@ -1,0 +1,36 @@
+<html>
+    <head>
+        <title>Client example</title>
+    </head>
+    <body>
+        {% if not logged_in %}
+        <p>Can't show you things until you <a href={{login_link}}>login</a></p>
+
+        {% else %}
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class='flashes'>
+                {% for m in messages %}
+                    <li>{{m}}</li>
+               {% endfor %}
+                </ul>
+            {% else %}
+            <p>No flashed messages</p>
+            {% endif %}
+        {% endwith %}
+
+        <p>Here are things you have permission to see</p>
+        <p>{{logged_in_data}}</p>
+        <form action="{{url_for('create_number')}}" method="post">
+            <label>Add a number: 
+                <input id="num_val" name="num_val" type="number" required>
+            </label>
+
+            <button>Create number</button>
+        </form>
+
+        <p><a href="{{url_for('logout')}}">Logout</a></p>
+
+        {% endif %}
+    </body>
+</html>

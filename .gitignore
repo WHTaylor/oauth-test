@@ -3,3 +3,4 @@ __pycache__/
 **/keys/private
 decode_test.py
 outs/
+*.swp

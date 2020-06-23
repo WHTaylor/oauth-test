@@ -16,13 +16,15 @@ clients = {
 
 
 class User:
-    def __init__(self, user_id, user_name, password):
+    def __init__(self, user_id, user_name, password, write_permissions):
         self.id = user_id
         self.name = user_name
         self.password = password
+        self.write_permissions = write_permissions
 
 users = [
-    User(1, "user", "plaintext")
+    User(1, "user", "plaintext", False),
+    User(2, "admin", "abc123", True),
 ]
 
 users_by_name = {

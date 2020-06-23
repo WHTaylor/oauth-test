@@ -11,32 +11,35 @@ id_param = "client_id=test"
 session_cookie = "client_session_id"
 
 app = flask.Flask(__name__)
+app.secret_key = b'something very secret'
 sessions = {}
+
+def get_end_user_token():
+    session_id = flask.request.cookies.get(session_cookie)
+    return sessions.get(session_id) if session_id else None
 
 @app.route("/")
 def index():
-    session_id = flask.request.cookies.get(session_cookie)
-    delete_cookie = False
-    if session_id not in sessions:
-        delete_cookie = True
-        session_id = None
+    token = get_end_user_token()
 
-    if not session_id:
-        body = f'<a href="{AUTH_ROOT}/oauth/authorization?{id_param}&response_type=code">Login</a>'
-    else:
-        token = sessions[session_id]
-        logout_url = flask.url_for("logout")
-        body = f'<a href="{logout_url}">Logout</a>'
+    if token:
         res = requests.get(
-            f"{RS_ROOT}/protected-things",
+            f"{RS_ROOT}/numbers",
             headers={"Authorization": f"Bearer {token}"})
-        if res.ok:
-            body += "<br>" + str(res.json())
-        else:
-            body += "<br>" + res.text + "<br>" + str(res.headers)
-    resp = flask.make_response(body)
-    if delete_cookie:
+
+        logged_in_data = str(res.json()) if res.ok else str(res.headers)
+    else:
+        logged_in_data = None
+
+    resp = flask.make_response(flask.render_template(
+        'index.html',
+        login_link=f"{AUTH_ROOT}/oauth/authorization?{id_param}&response_type=code",
+        logged_in=token is not None,
+        logged_in_data=logged_in_data))
+
+    if token is None:
         resp.set_cookie(session_cookie, '', expires=0)
+
     return resp
 
 @app.route("/foo")
@@ -59,3 +62,32 @@ def logout():
     if session_id and session_id in sessions:
         del sessions[session_id]
     return flask.redirect(flask.url_for("index"))
+
+@app.route("/create-number", methods=["POST"])
+def create_number():
+    token = get_end_user_token()
+    if not token:
+        flask.flash("Must be logged in to create numbers")
+    else:
+        resp = requests.post(
+            f'{RS_ROOT}/numbers',
+            data={'value': flask.request.form['num_val']},
+            headers={"Authorization": f"Bearer {token}"})
+        app.logger.info(resp.status_code)
+        app.logger.info(resp.reason)
+        app.logger.info(resp.text)
+        app.logger.info(resp.headers)
+        app.logger.info("Header type:")
+        app.logger.info(type(resp.headers))
+
+        if resp.ok:
+            body = resp.json()
+            flask.flash(f"Successfully created number: {body}")
+        else:
+            header = resp.headers.get("WWW-Authenticate")
+            error = f'{resp.status_code} {resp.reason}'
+            message = f"Number creation failed - {error}" + f': {header}' if header else ''
+            flask.flash(message)
+
+    return flask.redirect(flask.url_for('index'))
+

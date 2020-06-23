@@ -13,7 +13,7 @@ import data
 
 app = flask.Flask(__name__)
 app.secret_key = b"secret bytes no one can see"
-outstanding_codes = defaultdict(list)
+outstanding_codes = defaultdict(dict)
 
 @app.route("/")
 def index():
@@ -37,9 +37,10 @@ def authorize():
     elif flask.request.method == "POST":
         un, pw =  flask.request.form['username'], flask.request.form['password']
         if data.user_credentials_valid(un, pw):
+            print(un, pw)
             # Hack: This should be cryptographically secure
             code = uuid.uuid4()
-            outstanding_codes[client.id].append(code)
+            outstanding_codes[client.id][code] = un
             # Hack: shoudln't assume no query params in redirect url
             return flask.redirect(f"{client.redirect_url}?code={code}",
                                   code=http.client.SEE_OTHER)
@@ -67,19 +68,18 @@ def token():
     client_codes = outstanding_codes[auth.username]
     code = uuid.UUID(flask.request.args.get("code"))
     if not code or code not in client_codes:
-        raise BadRequest("That access code was not issued")
-    client_codes.remove(code)
+        raise BadRequest("Invalid authorization grant code")
+    token = generate_token(data.users_by_name[client_codes[code]])
+    del client_codes[code]
 
-    resp = flask.make_response({
-        "access_token": generate_token(),
-        "token_type": "Bearer",
-    })
-    app.logger.info("c")
-    return no_caching(resp)
+    return no_caching(flask.make_response({
+        "access_token": token,
+        "token_type": "Bearer"
+    }))
 
 
-@app.route("/public-key")
-def public_key():
+@app.route("/decoding-info")
+def decoding_info():
     return {
         "key": data.public_key(),
         "alg": "RS256",
@@ -90,10 +90,12 @@ def no_caching(resp):
     resp.headers.set("Pragma", "no-cache")
     return resp
 
-def generate_token():
+def generate_token(user):
+    print(user)
     return jwt.encode({
             "some": "claims",
             "exp": int(time.time()) + 30,
+            "scope": "read" + " write" if user.write_permissions else ""
         },
         data.private_key(),
         algorithm="RS256").decode()   # jwt is encoding to bytes, which can't be JSON serialized

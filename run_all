@@ -6,7 +6,7 @@ function killthekids {
     done
 }
 
-ROOT=~/projects/op-test
+ROOT=~/projects/oauth-test
 . $ROOT/venv/Scripts/activate
 
 export FLASK_ENV=development
