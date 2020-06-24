@@ -59,29 +59,9 @@ def numbers():
 
         return flask.jsonify({'id': len(top_secret_numbers) - 1, 'value': val})
 
-
-@app.route("/numbers/<int:id>", methods=["GET", "POST"])
-@validate_auth
-def number(id):
-    if flask.request.method == "GET":
-        try:
-            return flask.jsonify(top_secret_numbers[id])
-        except KeyError:
-            flask.abort(404)
-    else:
-        val = flask.request.form.get("value")
-        if not val:
-            raise BadRequest('"value" field must be provided to change a number value')
-        try:
-            top_secret_numbers[id] = val
-        except KeyError:
-            flask.abort(404)
-
-        return flask.jsonify({'id': id, 'value': val})
-
-
 @app.errorhandler(AuthException)
-@app.errorhandler(InvalidToken)
-@app.errorhandler(InsufficientScope)
 def handle_invalid_auth(e):
-    return flask.make_response((flask.jsonify(e.to_dict()), e.status_code, {'WWW-Authenticate': e.to_header_string()}))
+    return flask.make_response(
+        (flask.jsonify(e.to_dict()),
+         e.status_code,
+         {'WWW-Authenticate': e.to_header_string()}))

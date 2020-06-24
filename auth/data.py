@@ -10,7 +10,7 @@ class Client:
 # These will be registered dynamically
 clients = {
     c.id: c for c in [
-        Client("test", "http://localhost:4000/foo", "very secure")
+        Client("example-client", "http://localhost:4000/redirect", "very secure")
     ]
 }
 

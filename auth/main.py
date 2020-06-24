@@ -1,6 +1,4 @@
 import time
-import os
-import datetime
 import http
 import uuid
 from collections import defaultdict
@@ -13,12 +11,10 @@ import data
 
 app = flask.Flask(__name__)
 app.secret_key = b"secret bytes no one can see"
+
+TOKEN_EXPIRY_SECONDS = 30
+
 outstanding_codes = defaultdict(dict)
-
-@app.route("/")
-def index():
-    return "will have client management stuff"
-
 
 @app.route("/oauth/authorization", methods=["GET", "POST"])
 def authorize():
@@ -33,21 +29,24 @@ def authorize():
 
     if flask.request.method == "GET":
         # TODO: Try to get existing session as credentials
-        return flask.render_template("auth_form.html")
+        return flask.render_template("auth_form.html", client_name=client.id)
+
     elif flask.request.method == "POST":
-        un, pw =  flask.request.form['username'], flask.request.form['password']
+        if flask.request.form.get('reject-btn') is not None:
+            return flask.redirect(
+                add_query_params(client.redirect_url, {'error': 'access_denied'}))
+
+        un = flask.request.form.get('username')
+        pw = flask.request.form.get('password')
         if data.user_credentials_valid(un, pw):
-            print(un, pw)
-            # Hack: This should be cryptographically secure
-            code = uuid.uuid4()
-            outstanding_codes[client.id][code] = un
-            # Hack: shoudln't assume no query params in redirect url
-            return flask.redirect(f"{client.redirect_url}?code={code}",
-                                  code=http.client.SEE_OTHER)
+            access_code = uuid.uuid4()
+            outstanding_codes[client.id][access_code] = un
+            return flask.redirect(
+                add_query_params(client.redirect_url, {"code": access_code}),
+                code=http.client.FOUND)
         else:
-            return "Invalid credentials (this should be a nice little notification)"
-    else:
-        return "How'd you get here"
+            flask.flash("Invalid credentials")
+            return flask.render_template("auth_form.html", client_name=client.id)
 
 
 @app.route("/oauth/token", methods=["POST"])
@@ -64,19 +63,27 @@ def token():
     if not data.client_credentials_valid(auth):
         raise BadRequest("Client credentials invalid.")
 
-    # TODO: Code expiry
     client_codes = outstanding_codes[auth.username]
     code = uuid.UUID(flask.request.args.get("code"))
     if not code or code not in client_codes:
         raise BadRequest("Invalid authorization grant code")
-    token = generate_token(data.users_by_name[client_codes[code]])
+    user = data.users_by_name[client_codes[code]]
+    token = jwt.encode({
+            "some": "claims",
+            "exp": int(time.time()) + TOKEN_EXPIRY_SECONDS,
+            "scope": "read" + " write" if user.write_permissions else ""
+        },
+        data.private_key(),
+        # jwt encodes as bytes, have to decode to serialize as JSON
+        algorithm="RS256").decode()
+
     del client_codes[code]
 
     return no_caching(flask.make_response({
         "access_token": token,
-        "token_type": "Bearer"
+        "token_type": "Bearer",
+        "expires_in": TOKEN_EXPIRY_SECONDS
     }))
-
 
 @app.route("/decoding-info")
 def decoding_info():
@@ -90,12 +97,9 @@ def no_caching(resp):
     resp.headers.set("Pragma", "no-cache")
     return resp
 
-def generate_token(user):
-    print(user)
-    return jwt.encode({
-            "some": "claims",
-            "exp": int(time.time()) + 30,
-            "scope": "read" + " write" if user.write_permissions else ""
-        },
-        data.private_key(),
-        algorithm="RS256").decode()   # jwt is encoding to bytes, which can't be JSON serialized
+def add_query_params(url, params):
+    param_string = "&".join(f"{k}={v}" for k, v in params.items())
+    if "?" in url:
+        return f"{url}&{param_string}"
+    else:
+        return f"{url}?{param_string}"

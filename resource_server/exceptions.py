@@ -17,7 +17,7 @@ class AuthException(Exception):
 
     def to_header_string(self):
         error = f'error="{self.error}"' if self.error else "" 
-        description =  f"error_description={self.description}" if self.description else ""
+        description =  f'error_description="{self.description}"' if self.description else ""
         return ", ".join([f'realm="{self.bearer}"', error, description])
 
 

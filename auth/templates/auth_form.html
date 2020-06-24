@@ -1,16 +1,31 @@
 <html>
+    <head>
+        <title>Auth server example</title>
+    </head>
     <body>
+        <p>'{{client_name}}' redirected you here to login</p>
         <form action="" method="POST">
             <div>
                 <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+                <input type="text" id="username" name="username">
             </div>
             <div>
                 <label for="password">Password:</label>
-                <input type="text" id="password" name="password"required>
+                <input type="text" id="password" name="password">
             </div>
             <div>
-                <input type="submit" id="submit" value="Authorize">
+                <input type="submit" name="authorize-btn" value="Authorize">
+                <input type="submit" name="reject-btn" value="Reject">
             </div>
+        </form>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class='flashes'>
+                {% for m in messages %}
+                    <li>{{m}}</li>
+               {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
     </body>
 </html>
