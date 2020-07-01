@@ -9,7 +9,7 @@ Requires python3. Install dependencies with `pip install -r requirements.txt` - 
  - `/auth`: The Authentication Server, runs on `localhost:5000`
    - `/outh/authorization` (POST + GET): The client redirects the user-agent here. If the user provides valid credentials, redirects back to the client with an authorization grant.
    - `/outh/token` (POST): The client can request an access token by sending a valid authorization grant and it's own credetials to this endpoint.
-   - `/decoding-info`: Exposes the private key and algorithm required for the resource server to decode access tokens.
+   - `/decoding-info`: Exposes the public key and algorithm required for the resource server to verify access tokens' signatures.
 
  - `/client`: The Client, runs on `localhost:4000`
    - `/`: If not logged in, will provide a link to login which redirects to the `authorization` endpoint. If logged in, will try to use the associated access token to get `/numbers` from the resource server, and displays them/any errors which occur.
